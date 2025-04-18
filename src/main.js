@@ -10,62 +10,61 @@ const loadMore = document.querySelector(".load-more");
 let page = 1;
 let enteredInput = "";
 
-form.addEventListener('submit', handleSubmit);
-loadMore.addEventListener('click', onLoadMore)
-loadMore.classList.replace("load-more", "load-more-hidden");
+form.addEventListener("submit", handleSubmit);
+loadMore.addEventListener("click", onLoadMore);
 
 function handleSubmit(event) {
-    event.preventDefault();
-    enteredInput = searchInput.value.trim();
-    page = 1;
+  event.preventDefault();
+  enteredInput = searchInput.value.trim();
+  page = 1;
 
-    if (!enteredInput) {
-        iziToast.warning({
-            position: 'topRight',
-            title: 'Warning',
-            message: 'Please enter a search query',
-        });
-        searchInput.focus();
+  if (!enteredInput) return;
+
+  showLoader();
+  clearGallery();
+  loadMore.classList.add("load-more-hidden");
+
+  getImagesByQuery(enteredInput, page)
+    .then(data => {
+      if (!data.hits || data.hits.length === 0) {
+        iziToast.warning({ title: "No results", message: "Try another query" });
         return;
-    }
+      }
 
-    showLoader();
-    clearGallery();
-    loadMore.classList.replace("load-more", "load-more-hidden");
+      createGallery(data.hits);
 
-    getImagesByQuery(enteredInput, page)
-        .then(data => {
-            
-            if (!data.hits || data.hits.length === 0) {
-                iziToast.warning({
-                    position: 'topRight',
-                    title: 'Warning',
-                    message: 'Sorry, no images found. Please try another query!',
-                });
-                return;
-            }
-
-            if (data.hits.length < data.totalHits) {
-                loadMore.classList.replace("load-more-hidden", "load-more");
-            } else {
-                loadMore.classList.replace("load-more", "load-more-hidden");
-            }
-            createGallery(data.hits);
-
-        })
-        .catch(error => {
-            iziToast.error({
-                position: 'topRight',
-                title: 'Error',
-                message: 'Failed to fetch images. Please try again later.',
-            });
-            console.error('Error:', error);
-        })
-        .finally(() => {
-            hideLoader();
-            searchInput.value = "";
-        });
+      if (data.totalHits > page * 15) {
+        loadMore.classList.remove("load-more-hidden");
+      }
+    })
+    .catch(error => {
+      iziToast.error({ title: "Error", message: error.message });
+    })
+    .finally(() => {
+      hideLoader();
+    });
 }
 
+function onLoadMore() {
+  page++;
+  loadMore.classList.add("load-more-hidden");
+  showLoader();
 
+  getImagesByQuery(enteredInput, page)
+    .then(data => {
+      createGallery(data.hits);
+      smoothScroll();
 
+      if (page * 15 >= data.totalHits) {
+        iziToast.info({ message: "We're sorry, but you've reached the end of search results." });
+      } else {
+        loadMore.classList.remove("load-more-hidden");
+      }
+    })
+    .catch(error => {
+      iziToast.error({ title: "Error", message: error.message });
+    })
+    .finally(() => {
+      hideLoader();
+    });
+}
